@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Карта Ямы Риги 🍒 (Firebase)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTsUkZt3-oTNUDZ0Mu1xU5GR4FEldDqcw",
+      authDomain: "riga-cherry-map.firebaseapp.com",
+      databaseURL: "https://riga-cherry-map-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "riga-cherry-map",
+      storageBucket: "riga-cherry-map.appspot.com",
+      messagingSenderId: "506372735130",
+      appId: "1:506372735130:web:ceba493ef6b15f89f93b95"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const map = L.map('map').setView([56.9496, 24.1052], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    const cherryIcon = L.divIcon({ html: '🍒', className: '', iconSize: [24, 24] });
+
+    // Храним метки, чтобы не дублировать при перерисовке
+    const markers = {};
+
+    db.ref("cherries").on("value", (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      // Удаляем старые метки
+      Object.keys(markers).forEach((key) => {
+        map.removeLayer(markers[key]);
+      });
+
+      // Добавляем актуальные
+      Object.keys(data).forEach((key) => {
+        const { lat, lng } = data[key];
+        const marker = L.marker([lat, lng], { icon: cherryIcon }).addTo(map);
+        marker.on("click", () => {
+          db.ref("cherries/" + key).remove();
+        });
+        markers[key] = marker;
+      });
+    });
+
+    map.on("click", function(e) {
+      const newRef = db.ref("cherries").push();
+      newRef.set({ lat: e.latlng.lat, lng: e.latlng.lng });
+    });
+  </script>
+</body>
+</html>
